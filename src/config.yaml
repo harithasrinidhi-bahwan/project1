@@ -1,0 +1,110 @@
+# ── Pipeline Mode ───────────────────────────────────────────────
+# db_to_file        → Source DB → S3/Azure/Local
+# db_to_file_to_db  → Source DB → S3/Azure/Local → Target DB
+# file_to_db        → S3/Azure/Local → Target DB  (no source DB needed)
+pipeline_mode: db_to_file
+
+# ── Active Source DB ────────────────────────────────────────────
+# Ignored when pipeline_mode is file_to_db
+active_db: mysql  # postgres | mysql | mssql | sqlite
+
+# ── Source Databases ────────────────────────────────────────────
+postgres:
+  host: localhost
+  port: 5432
+  name: company
+  user: postgres
+  query: "SELECT * FROM employee_data"
+
+mysql:
+  host: localhost
+  port: 3307
+  name: company
+  user: root
+  query: "SELECT * FROM employee_data"
+
+mssql:
+  host: localhost
+  port: 1433
+  name: sales
+  user: sqluser
+  query: "SELECT * FROM test_employees"
+
+sqlite:
+  path: ""
+  query: "SELECT * FROM employees"
+
+# ── Input (file_to_db mode only) ────────────────────────────────
+# Completely independent from the output block.
+# Point this at ANY csv or json file, local, S3, or Azure.
+#
+# Local examples:
+#   source: local
+#   format: csv
+#   file_path: data/employees.csv
+#   file_path: /absolute/path/to/report.json
+#
+# S3 examples:
+#   source: s3
+#   format: json
+#   s3_bucket: my-bucket
+#   s3_key: folder/employees.csv
+#
+# Azure examples:
+#   source: azure
+#   format: csv
+#   azure_container: my-container
+#   azure_blob: folder/employees.csv
+#   # connection string → AZURE_STORAGE_CONNECTION_STRING in .env
+#
+input:
+  source: s3                 # local | s3 | azure
+  format: csv                    # csv | json
+  file_path: C:\Users\subas\OneDrive\Desktop\emp.csv   # used when source: local
+  s3_bucket: jdbc-suba            # used when source: s3
+  s3_key: emp.csv               # used when source: s3
+  azure_container: data   # used when source: azure
+  azure_blob: output.json     # used when source: azure
+
+# ── Output ──────────────────────────────────────────────────────
+# Used by db_to_file and db_to_file_to_db modes only.
+output:
+  destination: local        # s3 | azure | local
+  format: csv              # csv | json
+  s3_bucket: jdbc-suba      # used when destination: s3
+  s3_key: postgres.csv    # used when destination: s3 or local (as filename)
+  local_folder: C:/Users/subas/OneDrive/Desktop/output1  # used when destination: local
+  azure_container: data   # used when destination: azure
+  azure_blob: output.json  # used when destination: azure
+ 
+
+# ── Target DB (Load) ────────────────────────────────────────────
+target_db:
+  enabled: true      # true | false
+  type: mysql        # postgres | mysql | mssql | sqlite
+  host: localhost
+  port: 3307
+  name: destination_db
+  user: root
+  table: emp_test
+  if_exists: replace    # replace | append | fail
+
+# ── Transformation Rules (optional) ─────────────────────────────
+# Remove or comment out to skip Layer 2 (custom rules)
+#
+# transformation:
+#   range_validation:
+#     age:
+#       min: 18
+#       max: 100
+#   positive_validation:
+#     - salary
+#   null_handling:
+#     department: unknown
+#     salary: mean
+#   name_columns:
+#     first_name: [first_name, fname]
+#     last_name:  [last_name, lname]
+#   steps:
+#     validate_data: true
+#     apply_name_rules: true
