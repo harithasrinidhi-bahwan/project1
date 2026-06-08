@@ -190,7 +190,7 @@ def run_pipeline(row: pd.Series):
             row["target_file_format"]
         )
 
-        return df
+        return len(df)
 
     # =====================================================
     # STORAGE → DB
@@ -559,7 +559,138 @@ def run_pipeline(row: pd.Series):
             target_config
         )
 
-        return df
+        return len(df)
+
+    # =====================================================
+    # STORAGE → STORAGE
+    # =====================================================
+    elif mode == "storage_to_storage":
+
+        source_type = row[
+            "source_dataset_type"
+        ].lower()
+
+        input_config = {
+
+            "source": source_type,
+
+            "format":
+                row["source_file_format"],
+
+            "s3_bucket":
+                row["source_bucket"],
+
+            "s3_key":
+                row["source_object_key"],
+
+            "file_path":
+                row["source_file_path"]
+        }
+
+        ingestion_units = read_input(
+            input_config
+        )
+
+        total_rows = 0
+
+        for unit in ingestion_units:
+
+            table_name = unit[
+                "table_name"
+            ]
+
+            df = unit[
+                "dataframe"
+            ]
+
+            print(
+                f"Processing file: "
+                f"{table_name} "
+                f"({len(df)} rows)"
+            )
+
+            target_type = row[
+                "target_dataset_type"
+            ].lower()
+
+            filename = (
+                f"{table_name}."
+                f"{row['target_file_format']}"
+            )
+
+            # =================================
+            # TARGET = S3
+            # =================================
+            if target_type == "s3":
+
+                output_config = {
+
+                    "destination": "s3",
+
+                    "format":
+                        row["target_file_format"],
+
+                    "target_bucket":
+                        row["target_bucket"],
+
+                    "target_key":
+                        row["target_object_key"]
+                        + filename,
+
+                    "local_folder": None
+                }
+
+            # =================================
+            # TARGET = LOCAL
+            # =================================
+            elif target_type == "local":
+
+                full_local_path = os.path.join(
+
+                    row["target_file_path"],
+
+                    filename
+                )
+
+                output_config = {
+
+                    "destination": "local",
+
+                    "format":
+                        row["target_file_format"],
+
+                    "target_bucket": None,
+
+                    "target_key": None,
+
+                    "local_folder":
+                        full_local_path
+                }
+
+            else:
+
+                raise ValueError(
+                    f"Unsupported target type: "
+                    f"{target_type}"
+                )
+
+            save_output(
+
+                df,
+
+                output_config,
+
+                row["target_file_format"]
+            )
+
+            total_rows += len(df)
+
+        print(
+            f"Processed total rows: "
+            f"{total_rows}"
+        )
+
+        return total_rows
 
     # =====================================================
     # INVALID MODE

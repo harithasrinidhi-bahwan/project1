@@ -203,4 +203,3 @@ def load_metadata(pipeline_id):
     )
  
     return metadata_df
- 

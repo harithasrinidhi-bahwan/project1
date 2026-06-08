@@ -44,4 +44,3 @@ def get_parser(file_type):
    raise Exception(
        f"Unsupported file type: {file_type}"
    )
- 
